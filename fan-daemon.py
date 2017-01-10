@@ -1,7 +1,9 @@
 #!/usr/bin/python
 #
-# Simple daemon to control the fan on a DLink DNS-320L.
+# Simple daemon to control the fan on a WD MCMgen2 and Ex2U
+# Based on fan-daemon of Lorenzo Martignoni for Dlink DNS 320l
 #
+# Copyright (C) 2016 Carl Schiller <schreibcarl@gmail.com>
 # Copyright (C) 2013 Lorenzo Martignoni <martignlo@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify it under
@@ -22,7 +24,7 @@ import serial
 import sys
 import time
 
-LOW_TEMP = 45
+LOW_TEMP = 40
 HIGH_TEMP = 50
 HYSTERESIS = 2
 
@@ -56,10 +58,20 @@ THERMAL_TABLE = (0x74, 0x73, 0x72, 0x71, 0x70, 0x6F, 0x6E, 0x6D, 0x6C, 0x6B,
                  0xB, 0xA, 0xA, 9, 9, 9, 8, 8, 7, 7, 7, 6, 6, 5, 5, 4, 4, 4, 3,
                  3, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0)
 READ_TEMP_CMD = "\xfa\x03\x08\x00\x00\x00\xfb"
+
+READ_RPM_CMD = "\xfa\x02\x01\x00\x00\x00\xfb"
+
 FAN_SPEED_CMDS = [
    "\xfa\x02\x00\x00\x00\x00\xfb",
-   "\xfa\x02\x00\x01\x00\x00\xfb",
-   "\xfa\x02\x00\x02\x00\x00\xfb",
+   "\xfa\x02\x00\x20\x00\x00\xfb",
+   "\xfa\x02\x00\x35\x00\x00\xfb",
+   "\xfa\x02\x00\x40\x00\x00\xfb",
+   "\xfa\x02\x00\x50\x00\x00\xfb",
+   "\xfa\x02\x00\x60\x00\x00\xfb",
+   "\xfa\x02\x00\x80\x00\x00\xfb",
+   "\xfa\x02\x00\xa0\x00\x00\xfb",
+   "\xfa\x02\x00\xc0\x00\x00\xfb",
+   "\xfa\x02\x00\xd2\x00\x00\xfb",
 ]
 
 DEBUG = os.getenv("DEBUG", False)
@@ -71,7 +83,7 @@ def Debug(fmt, *args):
 
 
 def InitSerial():
-   port = serial.Serial("/dev/ttyS1", 115600, 8, "N", 1, 0.1)
+   port = serial.Serial("/dev/ttyS1", 19200, 8, "N", 1, 0.1)
    return port
 
 
@@ -108,6 +120,14 @@ def ReadTemp(port):
 
    return None
 
+   def ReadRPM(port):
+   WritePktToSerial(port, READ_RPM_CMD)
+   data, _ = ReadPktFromSerial(port), ReadPktFromSerial(port)
+   rpm = ord(data[i])
+   print rpm
+
+   return None
+
 
 def SetFanSpeed(port, speed):
    assert speed >= 0 and speed < len(FAN_SPEED_CMDS)
@@ -118,36 +138,35 @@ def SetFanSpeed(port, speed):
 
 def AutoFanControl(port):
    speed = -1
-
+   temp_old = 0
+   hyst = HYSTERESIS
    while True:
       try:
-         if speed == -1:
-           speed = SetFanSpeed(port, 0)
-
          temp = ReadTemp(port)
          Debug("Temp: %d Speed: %d", temp, speed)
-
-         if temp < LOW_TEMP - HYSTERESIS:
+         if temp < LOW_TEMP:
             if speed != 0:
-               speed = SetFanSpeed(port, 0)
-         elif temp < LOW_TEMP:
-            if speed > 1:
-               speed = SetFanSpeed(port, 1)
-         elif temp < HIGH_TEMP - HYSTERESIS:
-            if speed != 1:
-               speed = SetFanSpeed(port, 1)
-         elif temp < HIGH_TEMP:
-            if speed < 1:
-               speed = SetFanSpeed(port, 1)
-         else:
-            if speed != 2:
-               speed = SetFanSpeed(port, 2)
-
+               speed = 0
+               speed = SetFanSpeed(port, speed)
+         elif temp < temp_old:
+            hyst -= 1
+            if temp < temp_old - hyst:
+               speed -= 1
+               hyst = HYSTERESIS
+               speed = SetFanSpeed(port, speed)
+         elif temp > temp_old:
+               speed += 1
+               speed = SetFanSpeed(port, speed)
+         elif temp > HIGH_TEMP:
+            if speed != 9:
+               speed = 9
+               speed = SetFanSpeed(port, speed)
       except Exception as e:
-         speed = -1
-         print >> sys.stderr, e
-
-      time.sleep(15)
+     #    speed = -1
+         print "error"
+#      print ("Debug Temp: %d, %d, %d, %d", temp, temp_old, hyst, speed)
+      temp_old = temp
+      time.sleep(20)
 
 
 def main():
@@ -162,3 +181,4 @@ def main():
 
 if __name__ == "__main__":
    main()
+
