@@ -1,8 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/python3 -u
 #
 # Simple daemon to control the fan on a WD MCMgen2 and Ex2U
 # Based on fan-daemon of Lorenzo Martignoni for Dlink DNS 320l
 #
+# Copyright (C) 2022 Nico Maas <mail@nico-maas.de>
 # Copyright (C) 2016 Carl Schiller <schreibcarl@gmail.com>
 # Copyright (C) 2013 Lorenzo Martignoni <martignlo@gmail.com>
 #
@@ -30,13 +31,13 @@ HYSTERESIS = 2
 
 POWER_LED_CMD = [
    # Off
-   "\xfa\x03\x06\x00\x00\x01\xfb",
+   b"\xfa\x03\x06\x00\x00\x01\xfb",
    # On
-   "\xfa\x03\x06\x01\x00\x01\xfb",
+   b"\xfa\x03\x06\x01\x00\x01\xfb",
    # Blink
-   "\xfa\x03\x06\x02\x00\x01\xfb",
+   b"\xfa\x03\x06\x02\x00\x01\xfb",
 ]
-DEVICE_READY_CMD = "\xfa\x03\x01\x00\x00\x00\xfb"
+DEVICE_READY_CMD = b"\xfa\x03\x01\x00\x00\x00\xfb"
 
 THERMAL_TABLE = (0x74, 0x73, 0x72, 0x71, 0x70, 0x6F, 0x6E, 0x6D, 0x6C, 0x6B,
                  0x6A, 0x69, 0x68, 0x67, 0x66, 0x65, 0x64, 0x63, 0x62, 0x61,
@@ -57,21 +58,22 @@ THERMAL_TABLE = (0x74, 0x73, 0x72, 0x71, 0x70, 0x6F, 0x6E, 0x6D, 0x6C, 0x6B,
                  0x10, 0xF, 0xF, 0xE, 0xE, 0xE, 0xD, 0xD, 0xC, 0xC, 0xC, 0xB,
                  0xB, 0xA, 0xA, 9, 9, 9, 8, 8, 7, 7, 7, 6, 6, 5, 5, 4, 4, 4, 3,
                  3, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0)
-READ_TEMP_CMD = "\xfa\x03\x08\x00\x00\x00\xfb"
 
-READ_RPM_CMD = "\xfa\x02\x01\x00\x00\x00\xfb"
+READ_TEMP_CMD = b"\xfa\x03\x08\x00\x00\x00\xfb"
+
+READ_RPM_CMD = b"\xfa\x02\x01\x00\x00\x00\xfb"
 
 FAN_SPEED_CMDS = [
-   "\xfa\x02\x00\x00\x00\x00\xfb",
-   "\xfa\x02\x00\x20\x00\x00\xfb",
-   "\xfa\x02\x00\x35\x00\x00\xfb",
-   "\xfa\x02\x00\x40\x00\x00\xfb",
-   "\xfa\x02\x00\x50\x00\x00\xfb",
-   "\xfa\x02\x00\x60\x00\x00\xfb",
-   "\xfa\x02\x00\x80\x00\x00\xfb",
-   "\xfa\x02\x00\xa0\x00\x00\xfb",
-   "\xfa\x02\x00\xc0\x00\x00\xfb",
-   "\xfa\x02\x00\xd2\x00\x00\xfb",
+   b"\xfa\x02\x00\x00\x00\x00\xfb",
+   b"\xfa\x02\x00\x20\x00\x00\xfb",
+   b"\xfa\x02\x00\x35\x00\x00\xfb",
+   b"\xfa\x02\x00\x40\x00\x00\xfb",
+   b"\xfa\x02\x00\x50\x00\x00\xfb",
+   b"\xfa\x02\x00\x60\x00\x00\xfb",
+   b"\xfa\x02\x00\x80\x00\x00\xfb",
+   b"\xfa\x02\x00\xa0\x00\x00\xfb",
+   b"\xfa\x02\x00\xc0\x00\x00\xfb",
+   b"\xfa\x02\x00\xd2\x00\x00\xfb",
 ]
 
 DEBUG = os.getenv("DEBUG", False)
@@ -79,7 +81,7 @@ DEBUG = os.getenv("DEBUG", False)
 
 def Debug(fmt, *args):
    if DEBUG:
-      print >> sys.stderr, fmt % args
+      print(fmt % args, file=sys.stderr)
 
 
 def InitSerial():
@@ -97,9 +99,8 @@ def ReadPktFromSerial(port, timeout=5):
    tstamp = time.time()
    while time.time() - tstamp < timeout:
       data = port.read(7)
-      if data and len(data) == 7 and data[0] == "\xfa" and data[6] == "\xfb":
+      if data and len(data) == 7 and data[0] == 250 and data[6] == 251:
          return data
-
    return None
 
 
@@ -113,19 +114,19 @@ def SetPowerLed(port, status):
 def ReadTemp(port):
    WritePktToSerial(port, READ_TEMP_CMD)
    data, _ = ReadPktFromSerial(port), ReadPktFromSerial(port)
-   if data and data[1] == "\x03" and data[2] == "\x08":
-      temp = ord(data[5])
+   if data and data[1] == 3 and data[2] == 8:
+      #temp = ord(data[5])
+      temp = data[5]
       if temp < len(THERMAL_TABLE):
          return THERMAL_TABLE[temp]
-
    return None
 
-   def ReadRPM(port):
+
+def ReadRPM(port):
    WritePktToSerial(port, READ_RPM_CMD)
    data, _ = ReadPktFromSerial(port), ReadPktFromSerial(port)
    rpm = ord(data[i])
-   print rpm
-
+   print(rpm)
    return None
 
 
@@ -163,8 +164,8 @@ def AutoFanControl(port):
                speed = SetFanSpeed(port, speed)
       except Exception as e:
      #    speed = -1
-         print "error"
-#      print ("Debug Temp: %d, %d, %d, %d", temp, temp_old, hyst, speed)
+         print("error")
+      #print("Debug Temp: %d, %d, %d, %d"%(temp, temp_old, hyst, speed))
       temp_old = temp
       time.sleep(20)
 
