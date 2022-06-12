@@ -24,10 +24,15 @@ import os
 import serial
 import sys
 import time
+import io
+import subprocess
 
 LOW_TEMP = 40
 HIGH_TEMP = 50
 HYSTERESIS = 2
+
+DEBUG = os.getenv("DEBUG", False)
+HDD_AND_CPU_TEMP = False
 
 POWER_LED_CMD = [
    # Off
@@ -75,9 +80,6 @@ FAN_SPEED_CMDS = [
    b"\xfa\x02\x00\xc0\x00\x00\xfb",
    b"\xfa\x02\x00\xd2\x00\x00\xfb",
 ]
-
-DEBUG = os.getenv("DEBUG", False)
-
 
 def Debug(fmt, *args):
    if DEBUG:
@@ -144,7 +146,13 @@ def AutoFanControl(port):
    while True:
       try:
          temp = ReadTemp(port)
-         Debug("Temp: %d Speed: %d", temp, speed)
+         if HDD_AND_CPU_TEMP:
+            tempCPU = ReadTempCPU()
+            tempHDD1 = ReadTempHDD("/dev/sda")
+            tempHDD2 = ReadTempHDD("/dev/sdb")
+            Debug("Case: %d °C, CPU: %d °C, HDD1: %d °C, HDD2: %d °C, Speed: %d", temp, tempCPU, tempHDD1, tempHDD2, speed)
+         else:
+            Debug("Temp: %d Speed: %d", temp, speed)
          if temp < LOW_TEMP:
             if speed != 0:
                speed = 0
@@ -168,6 +176,20 @@ def AutoFanControl(port):
       #print("Debug Temp: %d, %d, %d, %d"%(temp, temp_old, hyst, speed))
       temp_old = temp
       time.sleep(20)
+
+
+def ReadTempCPU():
+   with open('/sys/class/thermal/thermal_zone0/temp', 'r') as tempCPU:
+      return int(float(tempCPU.read().replace('\n', ''))/1000.0)
+
+
+def ReadTempHDD(hddDev):
+   proc = subprocess.Popen(["hdparm", "-H", hddDev], stdout=subprocess.PIPE)
+   search =  "drive temperature (celsius) is:"
+   for line in io.TextIOWrapper(proc.stdout, encoding="utf-8"):
+      if search in line:
+         #line = line.replace(search, "")
+         return int((line.replace(search, "")).strip())
 
 
 def main():

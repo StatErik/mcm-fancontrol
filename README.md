@@ -6,7 +6,9 @@ You can use the fan-daemon.py script to automatically control the speed of the f
 
 Installation
 ------------
-Instead of the original / Python 2 version by cschil, this script is adapted to support Python 3 and got an Systemd file so that it can automatically on boot. Basic install: 
+Instead of the original / Python 2 version by cschil, this script is adapted to support Python 3 and got an Systemd file so that it can automatically start on boot. Also if you have installed hdparm you can set both the ````DEBUG```` and ````HDD_AND_CPU_TEMP```` switches in the Python file to True to allow the script to output Case, CPU, HDD1 and HDD2 temperature every 20 seconds in the journal log.
+
+Basic install: 
 ````
 cp fan-daemon.py /usr/sbin/
 chmod +x /usr/sbin/fan-daemon.py
