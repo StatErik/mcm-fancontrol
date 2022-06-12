@@ -6,8 +6,8 @@ After=syslog.target
 Type=simple
 ExecStart=/usr/sbin/fan-daemon.py
 SyslogIdentifier=fan-daemon
-StandardOutput=syslog
-StandardError=syslog
+StandardOutput=journal
+StandardError=journal
 Restart=always
 RestartSec=3
 
