@@ -1,4 +1,7 @@
-Fancontrol for WD Mycloud Mirror gen2 and Ex2 Ultra
+Fancontrol for WD Mycloud Mirror gen2 and Ex2 Ultra.
+This is for my personal setup. I use an external 80mm Fan below the NAS to keep it cool. It starts spinning reliably on speed setting 3. So I added an MIN_SPEED setting. For completion there is also a MAX_SPEED setting.
+Also a few minor bugs were fixed.
+
 Temperature sensor & fan
 ------------------------
 
@@ -23,6 +26,7 @@ Known bugs
 
 Thanks
 ------
+- [Nico Maas](mail@nico-maas.de) (for the enhanced version)
 - [Lorenzo Martignoni](martignlo@gmail.com) (basic script)
 - [Jamie Lentin](http://jamie.lentin.co.uk/)
 - [Roberto Paleari](http://roberto.greyhats.it) (for the thermal table)
