@@ -26,8 +26,8 @@ Known bugs
 
 Thanks
 ------
-- [Nico Maas](mail@nico-maas.de) (for the enhanced version)
-- [Lorenzo Martignoni](martignlo@gmail.com) (basic script)
+- [Nico Maas](mailto:mail@nico-maas.de) (for the enhanced version)
+- [Lorenzo Martignoni](mailto:martignlo@gmail.com) (basic script)
 - [Jamie Lentin](http://jamie.lentin.co.uk/)
 - [Roberto Paleari](http://roberto.greyhats.it) (for the thermal table)
 - [Carl Schiller](https://github.com/cschil) (for adapting the basic script to be used with WD Mycloud Mirror gen2 and Ex2 Ultra)
