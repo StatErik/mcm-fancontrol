@@ -3,6 +3,7 @@
 # Simple daemon to control the fan on a WD MCMgen2 and Ex2U
 # Based on fan-daemon of Lorenzo Martignoni for Dlink DNS 320l
 #
+# Copyright (C) 2022 Erik Appel <erik@appel.cloud>
 # Copyright (C) 2022 Nico Maas <mail@nico-maas.de>
 # Copyright (C) 2016 Carl Schiller <schreibcarl@gmail.com>
 # Copyright (C) 2013 Lorenzo Martignoni <martignlo@gmail.com>
@@ -27,12 +28,14 @@ import time
 import io
 import subprocess
 
-LOW_TEMP = 40
-HIGH_TEMP = 50
+LOW_TEMP = 35
+HIGH_TEMP = 40
 HYSTERESIS = 2
+MIN_SPEED = 3
+MAX_SPEED = 9
 
 DEBUG = os.getenv("DEBUG", False)
-HDD_AND_CPU_TEMP = False
+HDD_AND_CPU_TEMP = True
 
 POWER_LED_CMD = [
    # Off
@@ -140,12 +143,31 @@ def SetFanSpeed(port, speed):
 
 
 def AutoFanControl(port):
-   speed = -1
+   speed = MIN_SPEED
    temp_old = 0
    hyst = HYSTERESIS
    while True:
       try:
          temp = ReadTemp(port)
+         if temp < LOW_TEMP:
+            if speed != MIN_SPEED:
+               speed = MIN_SPEED
+               speed = SetFanSpeed(port, speed)
+         elif temp > HIGH_TEMP:
+            if speed != MAX_SPEED:
+               speed = MAX_SPEED
+               speed = SetFanSpeed(port, speed)
+         elif temp < temp_old:
+            hyst -= 1
+            if temp < temp_old - hyst and speed > MIN_SPEED:
+               speed -= 1
+               hyst = HYSTERESIS
+               speed = SetFanSpeed(port, speed)
+         elif temp > temp_old and speed < MAX_SPEED:
+               speed += 1
+               speed = SetFanSpeed(port, speed)
+               
+         # Logging
          if HDD_AND_CPU_TEMP:
             tempCPU = ReadTempCPU()
             tempHDD1 = ReadTempHDD("/dev/sda")
@@ -153,27 +175,10 @@ def AutoFanControl(port):
             Debug("Case: %d °C, CPU: %d °C, HDD1: %d °C, HDD2: %d °C, Speed: %d", temp, tempCPU, tempHDD1, tempHDD2, speed)
          else:
             Debug("Temp: %d Speed: %d", temp, speed)
-         if temp < LOW_TEMP:
-            if speed != 0:
-               speed = 0
-               speed = SetFanSpeed(port, speed)
-         elif temp < temp_old:
-            hyst -= 1
-            if temp < temp_old - hyst:
-               speed -= 1
-               hyst = HYSTERESIS
-               speed = SetFanSpeed(port, speed)
-         elif temp > temp_old:
-               speed += 1
-               speed = SetFanSpeed(port, speed)
-         elif temp > HIGH_TEMP:
-            if speed != 9:
-               speed = 9
-               speed = SetFanSpeed(port, speed)
       except Exception as e:
-     #    speed = -1
+         #speed = -1
          print("error")
-      #print("Debug Temp: %d, %d, %d, %d"%(temp, temp_old, hyst, speed))
+      
       temp_old = temp
       time.sleep(20)
 
@@ -204,4 +209,3 @@ def main():
 
 if __name__ == "__main__":
    main()
-
